@@ -151,30 +151,18 @@ abort;  -- T2. There's nothing else we can do, this transaction has failed
 Lost Update (P4)
 ----------------
 
-Postgres "read committed" does not prevent Lost Update (P4):
+Postgres "read committed" prevents Lost Update (P4):
 
 ```sql
 begin; set transaction isolation level read committed; -- T1
 begin; set transaction isolation level read committed; -- T2
-select * from test where id = 1; -- T1
-select * from test where id = 1; -- T2
-update test set value = 11 where id = 1; -- T1
-update test set value = 11 where id = 1; -- T2, BLOCKS
-commit; -- T1. This unblocks T2, so T1's update is overwritten
+select * from testing_isolations where id = 1; -- T1
+select * from testing_isolations where id = 1; -- T2
+update testing_isolations set value = value + 1 where id = 1; -- T1. Shows 1 => 11
+update testing_isolations set value = value + 1 where id = 1; -- T2, BLOCKS
+commit; -- T1. This unblocks T2
+select * from testing_isolations where id = 1; -- T2. T2 rereads the value and shows 1 => 12 (10+1+1)
 commit; -- T2
-```
-
-Postgres "repeatable read" prevents Lost Update (P4):
-
-```sql
-begin; set transaction isolation level repeatable read; -- T1
-begin; set transaction isolation level repeatable read; -- T2
-select * from test where id = 1; -- T1
-select * from test where id = 1; -- T2
-update test set value = 11 where id = 1; -- T1
-update test set value = 11 where id = 1; -- T2, BLOCKS
-commit; -- T1. T2 now prints out "ERROR: could not serialize access due to concurrent update"
-abort;  -- T2. There's nothing else we can do, this transaction has failed
 ```
 
 
